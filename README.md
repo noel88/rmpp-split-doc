@@ -171,6 +171,9 @@ Your memos stay as ordinary notebooks in the `Memo` folder.
 
 MIT licensed. See [LICENSE](LICENSE).
 
+reMarkable and Paper Pro are trademarks of reMarkable AS. This project is not
+affiliated with or endorsed by reMarkable AS.
+
 ---
 
 ## 한국어
@@ -203,3 +206,6 @@ MIT licensed. See [LICENSE](LICENSE).
   - 해킹이 꺼진 순정 상태로 부팅됩니다. 이 상태는 안전합니다.
   - 지원 버전이라면 **반드시 `rebuild_hashtable`을 먼저 실행한 뒤** 설치 스크립트를
     다시 실행하세요. 순서를 바꾸면 UI가 계속 재시작됩니다.
+
+reMarkable과 Paper Pro는 reMarkable AS의 상표입니다. 이 프로젝트는 reMarkable AS와
+관련이 없으며 공식 지원을 받지 않습니다.
