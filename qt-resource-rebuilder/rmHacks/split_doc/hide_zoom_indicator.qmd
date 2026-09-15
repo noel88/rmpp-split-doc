@@ -1,0 +1,26 @@
+; Make the ZoomButton ("x.x" zoom indicator) appear ONLY briefly while zooming
+; in/out, then auto-hide — in both normal and split modes. Stock behaviour keeps
+; it on screen the whole time the document is zoomed away from default, which
+; overlaps the split boundary. We add a one-shot timer that shows it on every
+; zoomLevel change and hides it ~1.5s after the last change.
+AFFECT [[1224665461898798997]]
+    TRAVERSE [[8397993708429497603]] > [[6502786168]]#[[15549782143769420265]] > [[8398922437330412042]]#[[8400407604831274538]]
+        LOCATE AFTER ALL INSERT {
+            property bool rmhZoomActive: false
+            Timer {
+                id: rmhZoomHideTimer
+                interval: 1500
+                onTriggered: zoomButton.rmhZoomActive = false
+            }
+            onZoomLevelChanged: {
+                zoomButton.rmhZoomActive = true
+                rmhZoomHideTimer.restart()
+            }
+        }
+        REBUILD [[233748328658231]]
+            LOCATE BEFORE ALL
+            REMOVE UNTIL END
+            LOCATE AFTER ALL INSERT { zoomButton.rmhZoomActive && !adjustViewPopup.visible }
+        END REBUILD
+    END TRAVERSE
+END AFFECT

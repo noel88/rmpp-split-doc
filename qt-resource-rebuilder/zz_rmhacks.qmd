@@ -1,0 +1,10 @@
+; rmpp-split-doc v0.1.0 — split_doc + memo notebook for reMarkable Paper Pro Move
+; Based on rm-hacks-qmd v0.0.11-pre4 by asivery (MIT).
+VERSION 3.27.1.0
+
+LOAD rmHacks/base/global.qmd
+LOAD rmHacks/base/settings.qmd
+LOAD rmHacks/base/document_toggles_hack.qmd
+LOAD rmHacks/base/toolbar_compat.qmd
+
+LOAD rmHacks/split_doc/split_doc_main.qmd

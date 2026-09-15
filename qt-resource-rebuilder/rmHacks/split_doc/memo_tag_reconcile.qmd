@@ -1,0 +1,70 @@
+; Reconcile the visible memo marker tag whenever a document is opened.
+;
+; The memo marker (📝) is a denormalized hint on the PARENT doc; the real link lives in
+; rmh-memo-links.cfg. Tapping the memo button always re-creates (it means "I want a
+; memo"), so it can't be the place that REMOVES the tag. Instead, on every document open
+; (onDocumentChanged) we check the opened doc's linked memo: if the memo is gone/trashed
+; we strip the marker and drop the dead link; if alive we ensure the marker is present.
+; This also removes the legacy "Memo" text marker from an earlier iteration.
+;
+; Idempotent: only writes tags when they actually change, so it doesn't churn the list.
+; Uses the general base/global helpers Values.rmhReadFile / rmhWriteFile. `common` (Values)
+; and Library/LibraryController are already in DocumentView's scope.
+AFFECT [[1224665461898798997]]
+    TRAVERSE [[8397993708429497603]]
+        LOCATE BEFORE ALL INSERT {
+            function rmhReconcileMemoTag() {
+                if (!document || !document.id) return;
+                let rmhDocId = document.id;
+                let rmhLinksPath = "file:///home/root/.local/share/remarkable/xochitl/rmh-memo-links.cfg";
+                Values.rmhReadFile(rmhLinksPath, (links0) => {
+                    let links = links0 || ({});
+                    let memoId = links[rmhDocId];
+                    let pe = Library.entryForId(rmhDocId);
+                    let pts = (pe && pe.tags) ? pe.tags.map((t) => "" + t) : [];
+                    let base = pts.filter((t) => t !== "📝" && t !== "Memo");
+                    let applyDead = () => {
+                        if (base.length !== pts.length) LibraryController.setEntryTags(rmhDocId, base, []);
+                        if (memoId) { delete links[rmhDocId]; Values.rmhWriteFile(rmhLinksPath, links); }
+                    };
+                    if (!memoId) { applyDead(); return; }
+                    let rmhMetaPath = "file:///home/root/.local/share/remarkable/xochitl/" + memoId + ".metadata";
+                    Values.rmhReadFile(rmhMetaPath, (meta) => {
+                        let alive = !!meta && (meta.parent !== "trash") && !!Library.entryForId(memoId);
+                        if (alive) {
+                            if (pts.indexOf("📝") < 0 || base.length !== (pts.length - 1)) {
+                                let want = base.concat(["📝"]);
+                                LibraryController.setEntryTags(rmhDocId, want, []);
+                            }
+                            // Auto-open the linked memo alongside in the split. Defer via timer
+                            // so the split Loader instantiates before openDocument is called.
+                            root.rmhPendingMemoId = memoId;
+                            if (typeof rmhDocumentViewSplit !== "undefined" && rmhDocumentViewSplit) {
+                                if (Values.rmhSplitMode === Values.RmhSplittingMode.Off) Values.rmhSplitMode = Values.RmhSplittingMode.Divided;
+                                Values.rmhSplitRatio = Values.RmhSplittingRatio.Half;
+                                rmhMemoAutoOpenTimer.restart();
+                            }
+                        } else {
+                            applyDead();
+                        }
+                    });
+                });
+            }
+            Connections {
+                target: root
+                function onDocumentChanged() { root.rmhReconcileMemoTag(); }
+            }
+            property string rmhPendingMemoId: ""
+            Timer {
+                id: rmhMemoAutoOpenTimer
+                interval: 500
+                onTriggered: {
+                    let me2 = root.rmhPendingMemoId ? Library.entryForId(root.rmhPendingMemoId) : null;
+                    if (me2 && typeof rmhDocumentViewSplit !== "undefined" && rmhDocumentViewSplit && rmhDocumentViewSplit.item) {
+                        rmhDocumentViewSplit.item.openDocument(me2);
+                    }
+                }
+            }
+        }
+    END TRAVERSE
+END AFFECT

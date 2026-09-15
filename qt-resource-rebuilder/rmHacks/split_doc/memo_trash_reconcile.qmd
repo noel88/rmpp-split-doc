@@ -1,0 +1,55 @@
+; Instant memo-marker cleanup when a notebook is trashed from the file browser.
+;
+; The browser action bar's trashEntriesAction() (ActionHeader.qml) calls
+; selection.selectionMoveToTrash(). We re-run it but kick a short timer afterward that
+; re-validates ALL memo links: for each docId->memoId in rmh-memo-links.cfg whose memo's
+; metadata now reads "parent":"trash" (or is gone), strip the parent's 📝/Memo tag and
+; drop the dead link. The 800ms delay lets xochitl flush the trashed memo's metadata to
+; disk before we read it (reading immediately would race the write). Combined with the
+; on-document-open reconciler (memo_tag_reconcile.qmd) this makes the tag disappear right
+; after you delete the memo, not only on next open.
+;
+; Needs Values (common), Library, LibraryController — all in ActionHeader's scope.
+AFFECT [[5376273845699449139]]
+    TRAVERSE [[4656948266548654837]]#[[15623861903200516464]]
+        LOCATE BEFORE ALL INSERT {
+            function rmhReconcileAllMemoTags() {
+                let rmhLinksPath = "file:///home/root/.local/share/remarkable/xochitl/rmh-memo-links.cfg";
+                Values.rmhReadFile(rmhLinksPath, (links0) => {
+                    let links = links0 || ({});
+                    let ids = Object.keys(links);
+                    for (let k = 0; k < ids.length; k++) {
+                        let docId = ids[k];
+                        let memoId = links[docId];
+                        let rmhMetaPath = "file:///home/root/.local/share/remarkable/xochitl/" + memoId + ".metadata";
+                        Values.rmhReadFile(rmhMetaPath, (meta) => {
+                            if (!meta || meta.parent === "trash") {
+                                let pe = Library.entryForId(docId);
+                                let pts = (pe && pe.tags) ? pe.tags.map((t) => "" + t) : [];
+                                let base = pts.filter((t) => t !== "📝" && t !== "Memo");
+                                if (base.length !== pts.length) LibraryController.setEntryTags(docId, base, []);
+                                delete links[docId];
+                                Values.rmhWriteFile(rmhLinksPath, links);
+                            }
+                        });
+                    }
+                });
+            }
+            Timer {
+                id: rmhMemoReconcileTimer
+                interval: 800
+                onTriggered: actionHeader.rmhReconcileAllMemoTags()
+            }
+        }
+        REPLACE [[10738374345329588483]] WITH {
+            function trashEntriesAction() {
+                actionHeader.notificationQueue.enqueue({
+                    "text": qsTr("%n item(s) were moved to Trash", "", selection.size),
+                    "style": Notification.Secondary,
+                });
+                selection.selectionMoveToTrash();
+                rmhMemoReconcileTimer.restart();
+            }
+        }
+    END TRAVERSE
+END AFFECT
