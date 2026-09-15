@@ -76,8 +76,8 @@ rm -rf zz_rmhacks.qmd zz_rmHacks.qmd rmHacks
 
 ### 3. Copy the patches
 
-Download `rmpp-split-doc-v0.1.0.zip` from
-[Releases](https://github.com/noel88/rmpp-split-doc/releases) and unzip it. From the
+Download `rmpp-split-doc-<version>.zip` from the
+[latest release](https://github.com/noel88/rmpp-split-doc/releases/latest) and unzip it. From the
 unzipped folder, run:
 
 ```sh

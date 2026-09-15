@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.0 — 2026-09-15
+
+First stable release. The patches are the same as in v0.1.0.
+
+- Releases are now built by GitHub Actions when a `v*` tag is pushed. The
+  workflow checks that every `LOAD` target exists and that the install script
+  parses before it attaches the zip.
+- README adds a reMarkable trademark notice.
+
 ## v0.1.0 — 2026-09-15
 
 First public release.

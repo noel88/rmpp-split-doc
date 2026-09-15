@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches loader version
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          head -1 qt-resource-rebuilder/zz_rmhacks.qmd | grep -q "rmpp-split-doc ${VERSION} " \
+            || { echo "zz_rmhacks.qmd header does not say ${VERSION}"; exit 1; }
+          grep -q "^## ${VERSION} " CHANGELOG.md \
+            || { echo "CHANGELOG.md has no '## ${VERSION}' section"; exit 1; }
+
+      - name: Check every LOAD target exists
+        run: |
+          missing=0
+          check() {
+            base="$1"; file="$2"
+            for target in $(grep '^LOAD ' "$file" | awk '{print $2}'); do
+              if [ ! -f "$base/$target" ]; then
+                echo "missing: $base/$target (from $file)"
+                missing=1
+              fi
+            done
+          }
+          check qt-resource-rebuilder qt-resource-rebuilder/zz_rmhacks.qmd
+          check qt-resource-rebuilder/rmHacks/split_doc qt-resource-rebuilder/rmHacks/split_doc/split_doc_main.qmd
+          exit $missing
+
+      - name: Check shell scripts
+        run: |
+          for f in scripts/*.sh; do sh -n "$f"; done
+
+      - name: Build zip
+        run: |
+          NAME="rmpp-split-doc-${GITHUB_REF_NAME}"
+          git archive --format=zip --prefix="${NAME}/" -o "${NAME}.zip" HEAD \
+            qt-resource-rebuilder scripts README.md LICENSE CHANGELOG.md
+          unzip -l "${NAME}.zip"
+
+      - name: Extract release notes
+        run: |
+          awk -v v="## ${GITHUB_REF_NAME} " '
+            index($0, v) == 1 { on = 1; next }
+            on && /^## / { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          cat notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "rmpp-split-doc-${GITHUB_REF_NAME}.zip" \
+            --title "${GITHUB_REF_NAME}" --notes-file notes.md --verify-tag
